@@ -4,7 +4,7 @@ pipeline {
     environment {
         APP_NAME = 'php-demoapp'
         VERSION = "${BUILD_NUMBER}"
-        NEXUS_URL = 'http://host.docker.internal:8082'
+        NEXUS_URL = 'http://nexus:8081'
         NEXUS_REPO = 'php-artifacts'
     }
 
