@@ -3,54 +3,52 @@ pipeline {
 
     environment {
         APP_NAME = 'php-demoapp'
-        VERSION = "${BUILD_NUMBER}"
-        NEXUS_URL = 'http://nexus:8081'
-        NEXUS_REPO = 'php-artifacts'
+        IMAGE_NAME = 'php-demoapp:latest'
+        KIND_CLUSTER = 'php-cluster'
+        K8S_DIR = 'k8s'
+        KUBECONFIG = '/var/jenkins_home/.kube/config'
     }
 
     stages {
-        stage('PHP Syntax Check') {
+        stage('Checkout') {
             steps {
-                sh '''
-                find . -name "*.php" -print0 | xargs -0 -n1 php -l
-                '''
+                checkout scm
             }
         }
 
-        stage('Package App') {
+        stage('Check Tools') {
             steps {
-                sh '''
-                rm -rf build
-                mkdir -p build
-                zip -r build/${APP_NAME}-${VERSION}.zip . \
-                  -x "*.git*" "build/*" ".env"
-                '''
+                sh 'docker --version'
+                sh 'kubectl --kubeconfig=$KUBECONFIG get nodes'
+                sh 'kind version'
             }
         }
 
-        stage('Upload to Nexus') {
+        stage('Build Docker Image') {
             steps {
-                withCredentials([usernamePassword(
-                    credentialsId: 'nexus-creds',
-                    usernameVariable: 'NEXUS_USER',
-                    passwordVariable: 'NEXUS_PASS'
-                )]) {
-                    sh '''
-                    curl -u "$NEXUS_USER:$NEXUS_PASS" \
-                      --upload-file build/${APP_NAME}-${VERSION}.zip \
-                      ${NEXUS_URL}/repository/${NEXUS_REPO}/${APP_NAME}-${VERSION}.zip
-                    '''
-                }
+                sh 'docker build -t $IMAGE_NAME .'
             }
         }
-    }
 
-    post {
-        success {
-            echo "Build uploaded to Nexus successfully."
+        stage('Load Image Into Kind') {
+            steps {
+                sh 'kind load docker-image $IMAGE_NAME --name $KIND_CLUSTER'
+            }
         }
-        failure {
-            echo "Build failed."
+
+        stage('Deploy To Kubernetes') {
+            steps {
+                sh 'kubectl --kubeconfig=$KUBECONFIG apply -f $K8S_DIR/'
+                sh 'kubectl --kubeconfig=$KUBECONFIG rollout restart deployment/$APP_NAME'
+                sh 'kubectl --kubeconfig=$KUBECONFIG rollout status deployment/$APP_NAME --timeout=120s'
+            }
+        }
+
+        stage('Show Kubernetes Status') {
+            steps {
+                sh 'kubectl --kubeconfig=$KUBECONFIG get pods'
+                sh 'kubectl --kubeconfig=$KUBECONFIG get svc'
+            }
         }
     }
 }

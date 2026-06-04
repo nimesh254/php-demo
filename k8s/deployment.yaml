@@ -1,0 +1,20 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: php-demoapp
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: php-demoapp
+  template:
+    metadata:
+      labels:
+        app: php-demoapp
+    spec:
+      containers:
+        - name: php-demoapp
+          image: php-demoapp:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 80
