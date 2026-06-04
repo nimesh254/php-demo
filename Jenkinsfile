@@ -19,11 +19,11 @@ pipeline {
         stage('Check Tools') {
             steps {
                 sh 'docker --version'
+                sh 'docker ps'
                 sh 'kubectl --kubeconfig=$KUBECONFIG get nodes'
                 sh 'kind version'
             }
         }
-
         stage('Build Docker Image') {
             steps {
                 sh 'docker build -t $IMAGE_NAME .'
