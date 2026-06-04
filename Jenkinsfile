@@ -10,12 +10,6 @@ pipeline {
     }
 
     stages {
-        stage('Checkout') {
-            steps {
-                checkout scm
-            }
-        }
-
         stage('Check Tools') {
             steps {
                 sh 'docker --version'
@@ -24,6 +18,7 @@ pipeline {
                 sh 'kind version'
             }
         }
+
         stage('Build Docker Image') {
             steps {
                 sh 'docker build -t $IMAGE_NAME .'
